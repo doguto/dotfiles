@@ -1,0 +1,19 @@
+[character]
+success_symbol = "[@](bold green)"
+error_symbol = "[@](bold red)"
+
+[aws]
+disabled = true
+
+[directory]
+truncation_length = 5
+
+[git_branch]
+style = 'bold green'
+
+[time]
+disabled = false
+format = '[\[ $time \]]($style) '
+time_format = '%T'
+utc_time_offset = 'local'
+
