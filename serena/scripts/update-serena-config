@@ -1,0 +1,60 @@
+#!/bin/bash
+# update-serena-config
+#
+# serena_config.base.yml をベースに ~/.serena/serena_config.yml を更新する
+# projects はバージョン管理対象外のため serena_config.yml 側の値を保持する
+#
+# 使い方:
+#   ~/.claude/scripts/update-serena-config
+
+set -euo pipefail
+
+DOTFILES_DIR="$HOME/dotfiles/serena"
+BASE_FILE="$DOTFILES_DIR/serena_config.base.yml"
+SERENA_DIR="$HOME/.serena"
+SETTINGS_FILE="$SERENA_DIR/serena_config.yml"
+TMP_FILE="$(mktemp)"
+
+# クリーンアップ
+trap 'rm -f "$TMP_FILE"' EXIT
+
+# serena_config.base.yml の存在確認
+if [ ! -f "$BASE_FILE" ]; then
+  echo "Error: $BASE_FILE が見つかりません" >&2
+  exit 1
+fi
+
+# ~/.serena ディレクトリの作成
+mkdir -p "$SERENA_DIR"
+
+if [ -f "$SETTINGS_FILE" ]; then
+  # serena_config.yml が存在する場合: base に現在の projects をマージ
+
+  # projects: 行の行番号を取得
+  PROJECTS_LINE=$(grep -n "^projects:" "$SETTINGS_FILE" | cut -d: -f1)
+
+  cp "$BASE_FILE" "$TMP_FILE"
+
+  if [ -n "$PROJECTS_LINE" ]; then
+    # projects: の直前の行がコメントかチェックし、コメントも含めて抽出
+    PREV_LINE=$((PROJECTS_LINE - 1))
+    PREV_CONTENT=$(sed -n "${PREV_LINE}p" "$SETTINGS_FILE")
+
+    if echo "$PREV_CONTENT" | grep -q "^#"; then
+      START_LINE=$PREV_LINE
+    else
+      START_LINE=$PROJECTS_LINE
+    fi
+
+    # projects セクションをベースファイルに追記
+    printf "\n" >> "$TMP_FILE"
+    sed -n "${START_LINE},\$p" "$SETTINGS_FILE" >> "$TMP_FILE"
+  fi
+
+  mv "$TMP_FILE" "$SETTINGS_FILE"
+  echo "serena_config.yml を更新しました（projects を保持）"
+else
+  # serena_config.yml が存在しない場合: base をそのまま使用
+  cp "$BASE_FILE" "$SETTINGS_FILE"
+  echo "serena_config.yml を作成しました（serena_config.base.yml をコピー）"
+fi
